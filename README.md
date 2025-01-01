@@ -1,100 +1,21 @@
-# Welcome to React Router!
+This is a minimal repro of a react-router v7 encountering issues with using Apollo Client.
 
-A modern, production-ready template for building full-stack React applications using React Router.
+This repro case was created by:
+1. Creating a new react-router app `npx create-react-router@latest react-router-apollo-client`
+2. Revealing the server entry point  by running `npx react-router reveal`
+3. Updating revealed server entry point `entry.server.tsx` based on guidance for Remix in https://www.apollographql.com/blog/how-to-use-apollo-client-with-remix
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
-
-## Features
-
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
-
-```bash
-npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
-npm run dev
-```
-
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
-
-```bash
-npm run build
-```
-
-## Deployment
-
-### Docker Deployment
-
-This template includes three Dockerfiles optimized for different package managers:
-
-- `Dockerfile` - for npm
-- `Dockerfile.pnpm` - for pnpm
-- `Dockerfile.bun` - for bun
-
-To build and run using Docker:
-
-```bash
-# For npm
-docker build -t my-app .
-
-# For pnpm
-docker build -f Dockerfile.pnpm -t my-app .
-
-# For bun
-docker build -f Dockerfile.bun -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
+To reproduce the issue, simply run `npm run dev` and visit dev server http://localhost:5173 and observe the following error:
 
 ```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
+Unexpected Server Error
+
+TypeError [ERR_INVALID_STATE]: Invalid state: ReadableStream is locked
 ```
 
-## Styling
+More information: 
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+This error appears to be triggered when the `getDataFromTree(App)` line is called: https://github.com/craigsmitham/react-router-apollo-client/blob/1cb7514b7403a456bc141ef1e5b658e1cfb13b91/app/entry.server.tsx#L44C1-L44C32
 
----
+GH issue: 
 
-Built with ❤️ using React Router.
