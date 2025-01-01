@@ -17,5 +17,7 @@ More information:
 
 This error appears to be triggered when the `getDataFromTree(App)` line is called: https://github.com/craigsmitham/react-router-apollo-client/blob/1cb7514b7403a456bc141ef1e5b658e1cfb13b91/app/entry.server.tsx#L44C1-L44C32
 
-GH issue: 
+
+GH issue: https://github.com/apollographql/apollo-client/issues/12249
+StackBlitz: https://stackblitz.com/~/github.com/craigsmitham/react-router-apollo-client
 
