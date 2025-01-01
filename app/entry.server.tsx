@@ -6,6 +6,8 @@ import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
+import { ApolloClient, createHttpLink, InMemoryCache } from "@apollo/client";
+import { getDataFromTree } from "@apollo/client/react/ssr";
 
 export const streamTimeout = 5_000;
 
@@ -27,42 +29,66 @@ export default function handleRequest(
         ? "onAllReady"
         : "onShellReady";
 
-    const { pipe, abort } = renderToPipeableStream(
-      <ServerRouter context={routerContext} url={request.url} />,
-      {
-        [readyOption]() {
-          shellRendered = true;
-          const body = new PassThrough();
-          const stream = createReadableStreamFromReadable(body);
+    const client = new ApolloClient({
+      ssrMode: true,
+      cache: new InMemoryCache(),
+      link: createHttpLink({
+        uri: "https://flyby-gateway.herokuapp.com/", // from Apollo's Voyage tutorial series (https://www.apollographql.com/tutorials/voyage-part1/)
+        headers: Object.fromEntries(request.headers.entries()),
+        credentials: request.credentials ?? "include", // or "same-origin" if your backend server is the same domain
+      }),
+    });
 
-          responseHeaders.set("Content-Type", "text/html");
+    const App = <ServerRouter context={routerContext} url={request.url} />;
 
-          resolve(
-            new Response(stream, {
-              headers: responseHeaders,
-              status: responseStatusCode,
-            })
-          );
+    return getDataFromTree(App).then(() => {
+      const initialState = client.extract();
+      const { pipe, abort } = renderToPipeableStream(
+        <>
+          {App}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.__APOLLO_STATE__=${JSON.stringify(
+                initialState
+              ).replace(/</g, "\\u003c")}`, // The replace call escapes the < character to prevent cross-site scripting attacks that are possible via the presence of </script> in a string literal
+            }}
+          />
+        </>,
+        {
+          [readyOption]() {
+            shellRendered = true;
+            const body = new PassThrough();
+            const stream = createReadableStreamFromReadable(body);
 
-          pipe(body);
-        },
-        onShellError(error: unknown) {
-          reject(error);
-        },
-        onError(error: unknown) {
-          responseStatusCode = 500;
-          // Log streaming rendering errors from inside the shell.  Don't log
-          // errors encountered during initial shell rendering since they'll
-          // reject and get logged in handleDocumentRequest.
-          if (shellRendered) {
-            console.error(error);
-          }
-        },
-      }
-    );
+            responseHeaders.set("Content-Type", "text/html");
 
-    // Abort the rendering stream after the `streamTimeout` so it has tine to
-    // flush down the rejected boundaries
-    setTimeout(abort, streamTimeout + 1000);
+            resolve(
+              new Response(stream, {
+                headers: responseHeaders,
+                status: responseStatusCode,
+              })
+            );
+
+            pipe(body);
+          },
+          onShellError(error: unknown) {
+            reject(error);
+          },
+          onError(error: unknown) {
+            responseStatusCode = 500;
+            // Log streaming rendering errors from inside the shell.  Don't log
+            // errors encountered during initial shell rendering since they'll
+            // reject and get logged in handleDocumentRequest.
+            if (shellRendered) {
+              console.error(error);
+            }
+          },
+        }
+      );
+
+      // Abort the rendering stream after the `streamTimeout` so it has tine to
+      // flush down the rejected boundaries
+      setTimeout(abort, streamTimeout + 1000);
+    });
   });
 }
